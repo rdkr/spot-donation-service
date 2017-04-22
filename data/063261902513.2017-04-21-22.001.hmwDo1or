@@ -1,4 +1,0 @@
-#Version: 1.0
-#Fields: Timestamp UsageType Operation InstanceID MyBidID MyMaxPrice MarketPrice Charge Version
-2017-04-21 22:55:46 UTC	EU-SpotUsage:g2.2xlarge	RunInstances:SV008	i-05714e1d5d4f72224	sir-wv7i6fcn	0.702 USD	0.214 USD	0.214 USD	1
-2017-04-21 22:56:24 UTC	EU-SpotUsage:r3.2xlarge	RunInstances:SV008	i-020412c946545e1d8	sir-wm5i6x3n	0.741 USD	0.148 USD	0.148 USD	1
