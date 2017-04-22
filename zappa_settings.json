@@ -1,0 +1,8 @@
+{
+    "dev": {
+        "app_function": "s3_import_to_influxdb.lambda_handler",
+        "aws_region": "eu-west-1",
+        "profile_name": "crc",
+        "s3_bucket": "zappa-2l687q40u"
+    }
+}

@@ -1,87 +1,88 @@
-import boto3
 import gzip
-import os
-import urllib.parse
-from influxdb import InfluxDBClient
-from influxdb import SeriesHelper
+
+import boto3
+import influxdb
 
 
-BUCKETNAME = 'team-victory-spot-instance-data-feed-lambda'
-FILENAME = '063261902513.2017-04-22-05.001.rb6SAEry.gz'
+def lambda_handler(event, context):
 
-def getEstateData():
-    print('Get Estate Data from S3 => InfluxDB')
-    _s3 = boto3.resource('s3')
+    s3_client = boto3.client('s3')
 
-    _bucket = _s3.Bucket(BUCKETNAME)
+    bucket = event['Records'][0]['s3']['bucket']['name']
+    key = event['Records'][0]['s3']['object']['key']
+    s3_client.download_file(bucket, key, "/tmp/" + key)
 
-    # for item in _bucket.objects.all():
-    #     pprint.pprint(item)
+    json_data = []
 
-    _local_file_path = os.path.join('/tmp', FILENAME)
-    _bucket.download_file(FILENAME, _local_file_path)
+    total_bid = 0
+    total_spot = 0
 
-    i = 0
-    with gzip.open(_local_file_path) as _file:
-        data = [None]*2 #TODO: make this work for the actual number of lines
+    keys = ['Timestamp', 'UsageType', 'Operation', 'InstanceID',
+            'MyBidID', 'MyMaxPrice', 'MarketPrice', 'Charge', 'Version']
+
+    with gzip.open("/tmp/" + key) as _file:
+    # with gzip.open("data/063261902513.2017-04-21-23.001.GkNgzTrh.gz") as _file:
         for line in _file:
+
             dline = line.decode("utf-8")
+
             if '#' in dline:
                 continue
-            data[i] = dline.replace('\n', '').split('\t')
-            i += 1
-        return data
 
+            data = dict(zip(keys, dline.replace(" USD", "").replace('\n', '').split('\t')))
+            data['Charge'] = float(data['Charge'])
+            data['MyMaxPrice'] = float(data['MyMaxPrice'])
+            data['MarketPrice'] = float(data['MarketPrice'])
+            data['difference'] = data['MyMaxPrice'] - data['MarketPrice']
 
-client = boto3.client("ec2")
+            instance_type = data['UsageType'].split(":")[1]
 
-# InfluxDB connections settings
-host = '54.246.255.79'
-port = 8086
-user = ''#'root'
-password = ''#'root'
-dbname = 'mydb'
+            # hardcodeded data for now:
+            data['OnDemand'] = 0.702 if instance_type == "g2.2xlarge" else 0.741
+            time = data['Timestamp'].replace(" UTC", "Z").replace(" ", "T")
 
-myclient = InfluxDBClient(host, port, user, password, dbname)
+            json = {
+                "measurement": "spot_data",
+                "tags": {
+                    "region": "eu-west-1",
+                    "id": instance_type
+                },
+                "time": time,
+                "fields": data
+            }
 
-class MySeriesHelper(SeriesHelper):
-    # Meta class stores time series helper configuration.
-    class Meta:
-        # The client should be an instance of InfluxDBClient.
-        client = myclient
-        # The series name must be a string. Add dependent fields/tags in curly
-        # brackets.
-        series_name = 'events.stats.{region}'
-        # Defines all the fields in this time series.
-        fields = ['Timestamp', 'UsageType', 'Operation', 'InstanceID',
-                  'MyBidID', 'MyMaxPrice', 'MarketPrice', 'ChangeVersion']
-        # Defines all the tags for the series.
-        tags = ['region']
-        # Defines the number of data points to store prior to writing on the
-        # wire.
-        bulk_size = 2
-        # autocommit must be set to True when using bulk_size
-        autocommit = True
+            json_data.append(json)
 
+            total_bid = total_bid + data['MyMaxPrice']
+            total_spot = total_spot + data['MarketPrice']
 
-# The following will create *five* (immutable) data points.
-# Since bulk_size is set to bulk_size, upon the fifth construction call,
-# *all* data points will be written on the wire via MySeriesHelper.Meta.client.
-for d in getEstateData():
-    MySeriesHelper(region='eu-west-1',
-                   Timestamp=d[0],
-                   UsageType=d[1],
-                   Operation=d[2],
-                   InstanceID=d[3],
-                   MyBidID=d[4],
-                   MyMaxPrice=d[5],
-                   MarketPrice=d[6],
-                   ChangeVersion=d[7]
-                  )
-    print(d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7])
+        json = {
+            "measurement": "spot_totals",
+            "tags": {
+                "region": "eu-west-1"
+            },
+            "time": time,
+            "fields": {
+                "total_bid": total_bid,
+                "total_spot": total_spot,
+                "difference": 0 if total_bid - total_spot < 0 else total_bid - total_spot
+            }
+        }
 
-# To manually submit data points which are not yet written, call commit:
-MySeriesHelper.commit()
+        json_data.append(json)
 
-# To inspect the JSON which will be written, call _json_body_():
-MySeriesHelper._json_body_()
+    import pprint
+    pprint.pprint(json_data)
+
+    host = '172.31.23.241'
+    # host = '54.246.255.79'
+    port = 8086
+    user = ''
+    password = ''
+    dbname = 'spotty'
+
+    client = influxdb.InfluxDBClient(host, port, user, password, dbname)
+    print(client.create_database(dbname))
+    print(client.write_points(json_data))
+
+# lambda_handler(None, None)
