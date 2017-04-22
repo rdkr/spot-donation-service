@@ -15,8 +15,8 @@ def getEstateData():
 
     _bucket = _s3.Bucket(BUCKETNAME)
 
-    for item in _bucket.objects.all():
-        pprint.pprint(item)
+    # for item in _bucket.objects.all():
+    #     pprint.pprint(item)
 
     _local_file_path = os.path.join('/tmp', FILENAME)
     _bucket.download_file(FILENAME, _local_file_path)
