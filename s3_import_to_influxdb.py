@@ -1,7 +1,6 @@
 import boto3
 import gzip
 import os
-import pprint
 import urllib.parse
 from influxdb import InfluxDBClient
 from influxdb import SeriesHelper
