@@ -1,2 +1,2 @@
-# spot-saviour-service
-.create(2.0)
+# simple-donation-service
+.create(v=2.0) hackathon
