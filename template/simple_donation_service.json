@@ -1,0 +1,366 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Resources": {
+    "vpc5692b332": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "172.31.0.0/16",
+        "InstanceTenancy": "default",
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true"
+      }
+    },
+    "subnet47fcc831": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "172.31.16.0/20",
+        "AvailabilityZone": "eu-west-1b",
+        "VpcId": {
+          "Ref": "vpc5692b332"
+        }
+      }
+    },
+    "subnetcff9c9ab": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "172.31.0.0/20",
+        "AvailabilityZone": "eu-west-1a",
+        "VpcId": {
+          "Ref": "vpc5692b332"
+        }
+      }
+    },
+    "subnet5f83fe07": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "172.31.32.0/20",
+        "AvailabilityZone": "eu-west-1c",
+        "VpcId": {
+          "Ref": "vpc5692b332"
+        }
+      }
+    },
+    "igwfc479f98": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+      }
+    },
+    "dopt38fb535c": {
+      "Type": "AWS::EC2::DHCPOptions",
+      "Properties": {
+        "DomainName": "eu-west-1.compute.internal",
+        "DomainNameServers": [
+          "AmazonProvidedDNS"
+        ]
+      }
+    },
+    "acl8e886ee9": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpc5692b332"
+        }
+      }
+    },
+    "rtb04916e63": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpc5692b332"
+        }
+      }
+    },
+    "instancei020412c946545e1d8": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "DisableApiTermination": "false",
+        "InstanceInitiatedShutdownBehavior": "terminate",
+        "ImageId": "ami-70edb016",
+        "InstanceType": "r3.2xlarge",
+        "Monitoring": "true",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "team-victory"
+          }
+        ],
+        "NetworkInterfaces": [
+          {
+            "DeleteOnTermination": "true",
+            "DeviceIndex": 0,
+            "SubnetId": {
+              "Ref": "subnet5f83fe07"
+            },
+            "PrivateIpAddresses": [
+              {
+                "PrivateIpAddress": "172.31.37.229",
+                "Primary": "true"
+              }
+            ],
+            "GroupSet": [
+              "sg-a57524c3"
+            ],
+            "AssociatePublicIpAddress": "true"
+          }
+        ]
+      }
+    },
+    "instancei0f8ed17737b3a543b": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "DisableApiTermination": "false",
+        "InstanceInitiatedShutdownBehavior": "stop",
+        "ImageId": "ami-01ccc867",
+        "InstanceType": "t2.medium",
+        "KeyName": "neel-rsa",
+        "Monitoring": "false",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "team-victory-DATA"
+          }
+        ],
+        "NetworkInterfaces": [
+          {
+            "DeleteOnTermination": "true",
+            "DeviceIndex": 0,
+            "SubnetId": {
+              "Ref": "subnet47fcc831"
+            },
+            "PrivateIpAddresses": [
+              {
+                "PrivateIpAddress": "172.31.23.241",
+                "Primary": "true"
+              }
+            ],
+            "GroupSet": [
+              {
+                "Ref": "sgteamvictory"
+              }
+            ],
+            "AssociatePublicIpAddress": "true"
+          }
+        ]
+      }
+    },
+    "instancei05714e1d5d4f72224": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "DisableApiTermination": "false",
+        "InstanceInitiatedShutdownBehavior": "terminate",
+        "ImageId": "ami-70edb016",
+        "InstanceType": "g2.2xlarge",
+        "Monitoring": "false",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "team-victory"
+          }
+        ],
+        "NetworkInterfaces": [
+          {
+            "DeleteOnTermination": "true",
+            "DeviceIndex": 0,
+            "SubnetId": {
+              "Ref": "subnet5f83fe07"
+            },
+            "PrivateIpAddresses": [
+              {
+                "PrivateIpAddress": "172.31.32.72",
+                "Primary": "true"
+              }
+            ],
+            "GroupSet": [
+              "sg-a57524c3"
+            ],
+            "AssociatePublicIpAddress": "true"
+          }
+        ]
+      }
+    },
+    "s3teamvictoryspotinstancedatafeedlambda": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "AccessControl": "LogDeliveryWrite",
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      }
+    },
+    "sgteamvictory": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "team-victory",
+        "VpcId": {
+          "Ref": "vpc5692b332"
+        }
+      }
+    },
+    "acl1": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": "true",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "acl8e886ee9"
+        }
+      }
+    },
+    "acl2": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "acl8e886ee9"
+        }
+      }
+    },
+    "subnetacl1": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "acl8e886ee9"
+        },
+        "SubnetId": {
+          "Ref": "subnet47fcc831"
+        }
+      }
+    },
+    "subnetacl2": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "acl8e886ee9"
+        },
+        "SubnetId": {
+          "Ref": "subnet5f83fe07"
+        }
+      }
+    },
+    "subnetacl3": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "acl8e886ee9"
+        },
+        "SubnetId": {
+          "Ref": "subnetcff9c9ab"
+        }
+      }
+    },
+    "gw1": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpc5692b332"
+        },
+        "InternetGatewayId": {
+          "Ref": "igwfc479f98"
+        }
+      }
+    },
+    "route1": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "RouteTableId": {
+          "Ref": "rtb04916e63"
+        },
+        "GatewayId": {
+          "Ref": "igwfc479f98"
+        }
+      },
+      "DependsOn": "gw1"
+    },
+    "route2": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "rtb04916e63"
+        },
+        "GatewayId": "vpce-3308fc5a"
+      }
+    },
+    "dchpassoc1": {
+      "Type": "AWS::EC2::VPCDHCPOptionsAssociation",
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpc5692b332"
+        },
+        "DhcpOptionsId": {
+          "Ref": "dopt38fb535c"
+        }
+      }
+    },
+    "ingress1": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgteamvictory"
+        },
+        "IpProtocol": "-1",
+        "SourceSecurityGroupId": {
+          "Ref": "sgteamvictory"
+        },
+        "SourceSecurityGroupOwnerId": "063261902513"
+      }
+    },
+    "ingress2": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgteamvictory"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "80.169.207.10/32"
+      }
+    },
+    "ingress3": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgteamvictory"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "5.148.11.92/32"
+      }
+    },
+    "ingress4": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgteamvictory"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "77.99.51.241/32"
+      }
+    },
+    "ingress5": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgteamvictory"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "94.194.247.95/32"
+      }
+    },
+    "egress1": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgteamvictory"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "0.0.0.0/0"
+      }
+    }
+  },
+  "Description": "team-victory"
+}
