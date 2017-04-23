@@ -2,7 +2,7 @@
 
 Lambda to process Spot Price Data Feed data for InfluxDB.
 
-Build with `zappa build`.
+Build with `zappa package`.
 
 """
 
@@ -114,7 +114,7 @@ def lambda_handler(event, context):
     pprint.pprint(json_data)
 
     # set the db name
-    dbname = 'spot22'
+    dbname = 'spot99'
 
     # create the influx db connection
     client = influxdb.InfluxDBClient('172.31.23.241', 8086, '', '', dbname)
