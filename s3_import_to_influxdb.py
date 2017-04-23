@@ -8,9 +8,30 @@ Build with `zappa build`.
 
 import gzip
 import pprint
+import requests
 
 import boto3
 import influxdb
+
+
+def getOnDemandPrices():
+    print("Get OnDemand pricing for the Linux instances")
+    url = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/eu-west-1/index.json'
+
+    resp = requests.get(url)
+    data = {}
+    for i in resp.json()['terms']['OnDemand'].values():
+        for j in i.values():
+            for k in j['priceDimensions'].values():
+                if 'On Demand Linux g2.2xlarge' in k['description']:
+                    key = 'g2.2xlarge'
+                    if 'Hrs' in k['unit']:
+                        data[key] = k['pricePerUnit']['USD']
+                elif 'On Demand Linux r3.2xlarge' in k['description']:
+                    key = 'r3.2xlarge'
+                    if 'Hrs' in k['unit']:
+                        data[key] = k['pricePerUnit']['USD']
+    return data
 
 
 def lambda_handler(event, context):
@@ -47,9 +68,11 @@ def lambda_handler(event, context):
     for key in calcuated_keys:
         total[key] = 0
 
+    # get the on demand prices from the amazon pricing index api
+    _odp = getOnDemandPrices()
+
     # open the downloaded data file
     with gzip.open("/tmp/" + s3_key) as _file:
-
         # read each line of the file
         for line in _file:
 
@@ -66,7 +89,7 @@ def lambda_handler(event, context):
             instance_type = data['UsageType'].split(":")[1]
 
             # hardcodeded on_demand data for now
-            data['on_demand'] = 0.702 if instance_type == "g2.2xlarge" else 0.741
+            data['on_demand'] = _odp[instance_type]
 
             # cast collected numerial data to floats
             data['bid'] = float(data['MyMaxPrice'])
