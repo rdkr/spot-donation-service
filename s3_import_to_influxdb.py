@@ -14,7 +14,14 @@ import boto3
 import influxdb
 
 
-def getOnDemandPrices():
+def get_on_demand_prices():
+    """
+        get_on_demand_prices return a dictionary of the key: instance_type,
+        value: on_demand_price in USD. We run a curl against Amazon's Pricing
+        Index API for the EU-West-1 region to pull a json that we navigate for
+        the prices of r3.2xlarge, g2.2xlarge instace types.
+    """
+
     print("Get OnDemand pricing for the Linux instances")
     url = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/eu-west-1/index.json'
 
@@ -69,7 +76,7 @@ def lambda_handler(event, context):
         total[key] = 0
 
     # get the on demand prices from the amazon pricing index api
-    _odp = getOnDemandPrices()
+    _odp = get_on_demand_prices()
 
     # open the downloaded data file
     with gzip.open("/tmp/" + s3_key) as _file:
