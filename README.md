@@ -37,3 +37,6 @@ The lambda will ingest the *.gz file that is directed via the bucket event trigg
 
 ### **Grafana**
 This is our frontend and will display the relevant queries that are setup, and is available to create new queries based on the data that is present now in influxDB.
+
+### **Automation**
+Currently *Master* branch has a few hardcoded values due to time constraints, but the logic is sitting on the *Develop* branch ready for merge. The NAT isn't fully setup, so for the essence of the PoC to be fully functional for testing, it will be required at a later time for merge.
