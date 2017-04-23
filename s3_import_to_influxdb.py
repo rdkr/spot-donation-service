@@ -1,4 +1,13 @@
+""" Team Victory
+
+Lambda to process Spot Price Data Feed data for InfluxDB.
+
+Build with `zappa build`.
+
+"""
+
 import gzip
+import pprint
 
 import boto3
 import influxdb
@@ -6,41 +15,75 @@ import influxdb
 
 def lambda_handler(event, context):
 
+    """
+    Lambda function to parse a Spot Price Data Feed file,
+    perform the required calculations for reporting, and
+    push the information to InfluxDB
+    """
+
+    # get the bucket and key name of the object which triggered the lambda
+    s3_bucket = event['Records'][0]['s3']['bucket']['name']
+    s3_key = event['Records'][0]['s3']['object']['key']
+
+    # create s3 client and download the triggering file
     s3_client = boto3.client('s3')
+    s3_client.download_file(s3_bucket, s3_key, "/tmp/" + s3_key)
 
-    bucket = event['Records'][0]['s3']['bucket']['name']
-    key = event['Records'][0]['s3']['object']['key']
-    s3_client.download_file(bucket, key, "/tmp/" + key)
-
+    # list to contain data to be sent to influx
     json_data = []
 
-    total_bid = 0
-    total_spot = 0
+    # list of keys in data from AWS
+    data_keys = ['Timestamp', 'UsageType', 'Operation', 'InstanceID',
+                 'MyBidID', 'MyMaxPrice', 'MarketPrice', 'Charge', 'Version']
 
-    keys = ['Timestamp', 'UsageType', 'Operation', 'InstanceID',
-            'MyBidID', 'MyMaxPrice', 'MarketPrice', 'Charge', 'Version']
+    # list of keys we will calculate
+    calcuated_keys = ['on_demand', 'bid', 'spot', 'charity',
+                      'donated', 'savings', 'paid']
 
-    with gzip.open("/tmp/" + key) as _file:
-    # with gzip.open("data/063261902513.2017-04-21-23.001.GkNgzTrh.gz") as _file:
+    # dict to contain calculated totals
+    total = {}
+
+    # populate totals with 0s so we can increment as we read the data
+    for key in calcuated_keys:
+        total[key] = 0
+
+    # open the downloaded data file
+    with gzip.open("/tmp/" + s3_key) as _file:
+
+        # read each line of the file
         for line in _file:
 
+            # decode the file and ignore it if it is a comment
             dline = line.decode("utf-8")
-
             if '#' in dline:
                 continue
 
-            data = dict(zip(keys, dline.replace(" USD", "").replace('\n', '').split('\t')))
-            data['Charge'] = float(data['Charge'])
-            data['MyMaxPrice'] = float(data['MyMaxPrice'])
-            data['MarketPrice'] = float(data['MarketPrice'])
-            data['difference'] = data['MyMaxPrice'] - data['MarketPrice']
+            # create a dictionary with keys from above and values from spliting the data line
+            data = dict(zip(data_keys, dline.replace(" USD", "").replace('\n', '').split('\t')))
 
+            # parse the timestamp to required format and parse instance type
+            time = data['Timestamp'].replace(" UTC", "Z").replace(" ", "T")
             instance_type = data['UsageType'].split(":")[1]
 
-            # hardcodeded data for now:
-            data['OnDemand'] = 0.702 if instance_type == "g2.2xlarge" else 0.741
-            time = data['Timestamp'].replace(" UTC", "Z").replace(" ", "T")
+            # hardcodeded on_demand data for now
+            data['on_demand'] = 0.702 if instance_type == "g2.2xlarge" else 0.741
 
+            # cast collected numerial data to floats
+            data['bid'] = float(data['MyMaxPrice'])
+            data['spot'] = float(data['Charge'])
+
+            # perform calculations and store in data
+            data['charity'] = float(data['MyMaxPrice']) * 0.7
+            data['donated'] = (data['charity'] - data['spot']
+                               if data['spot'] < data['charity'] else 0)
+            data['paid'] = data['charity'] if data['charity'] > data['spot'] else data['spot']
+            data['savings'] = data['on_demand'] - data['paid']
+
+            # add the data to the total
+            for key in calcuated_keys:
+                total[key] = total[key] + data[key]
+
+            # construct the json for this data line
             json = {
                 "measurement": "spot_data",
                 "tags": {
@@ -51,38 +94,33 @@ def lambda_handler(event, context):
                 "fields": data
             }
 
+            # append the data to the data to send
             json_data.append(json)
 
-            total_bid = total_bid + data['MyMaxPrice']
-            total_spot = total_spot + data['MarketPrice']
-
+        # after reading all lines, construct json with totals
         json = {
             "measurement": "spot_totals",
             "tags": {
                 "region": "eu-west-1"
             },
             "time": time,
-            "fields": {
-                "total_bid": total_bid,
-                "total_spot": total_spot,
-                "difference": 0 if total_bid - total_spot < 0 else total_bid - total_spot
-            }
+            "fields": total
         }
 
+        # append data with totals to data to send
         json_data.append(json)
 
-    import pprint
+    # print data to send
     pprint.pprint(json_data)
 
-    host = '172.31.23.241'
-    # host = '54.246.255.79'
-    port = 8086
-    user = ''
-    password = ''
-    dbname = 'spotty'
+    # set the db name
+    dbname = 'spot22'
 
-    client = influxdb.InfluxDBClient(host, port, user, password, dbname)
+    # create the influx db connection
+    client = influxdb.InfluxDBClient('172.31.23.241', 8086, '', '', dbname)
+
+    # create the db if it doesn't exist
     print(client.create_database(dbname))
-    print(client.write_points(json_data))
 
-# lambda_handler(None, None)
+    # post the data to the database
+    print(client.write_points(json_data))
