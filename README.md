@@ -30,6 +30,8 @@ Installation of *InfluxDB* and *Grafana* should be done on the data instance tha
 1. [NGINX](https://www.nginx.com/resources/wiki/start/topics/tutorials/install/)
 1. [ACME Cert](https://github.com/Neilpang/acme.sh)
 
+Finally, in order to allow for the lamda to run appropriately, a NAT needs to be opened up for the lambda to reach out the public API.
+
 ### **Lambda**
 The lambda will ingest the *.gz file that is directed via the bucket event trigger. The ingestion will parse out the relevant data and format it so that it can be received in a readable format by InfluxDB. Additionally, the *On Demand* pricing will be retrieved and associated by instance type along with the aforementioned data export to the db.
 
